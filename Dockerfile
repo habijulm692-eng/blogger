@@ -1,19 +1,20 @@
 FROM php:8.2-apache
 
-# Apache URL rewrite সক্রিয় করা
+# Apache mod_rewrite সক্রিয় করা
 RUN a2enmod rewrite
+
+# .htaccess কার্যকর করতে AllowOverride All এনাবল করা
+RUN sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
 
 # পিএইচপি এবং মাইএসকিউএল ডাটাবেজ এক্সটেনশন ইনস্টল
 RUN docker-php-ext-install pdo pdo_mysql
 
-# প্রজেক্টের সব ফাইল অ্যাপাচে ডিরেক্টরিতে কপি করা
+# প্রজেক্টের সমস্ত সোর্স ফাইল কপি করা
 COPY . /var/www/html/
 
-# ফাইল ও ফোল্ডারের পারমিশন সেট করা
+# ওয়েব সার্ভারের পারমিশন ঠিক করা
 RUN chown -R www-data:www-data /var/www/html
 
-# পোর্ট এক্সপোজ করা
 EXPOSE 80
 
-# অ্যাপাচে সার্ভার ব্যাকগ্রাউন্ডে চালু রাখা
 CMD ["apache2-foreground"]
