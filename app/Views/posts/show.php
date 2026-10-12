@@ -75,9 +75,63 @@ $sc = $statusColors[$post['status']] ?? 'bg-slate-100 text-slate-600';
                 }
                 $detailedNotes = $rawExtra['detailed_notes'] ?? '';
                 $rounds = $rawExtra['rounds'] ?? null;
+                $allReviews = $rawExtra['all_reviews'] ?? [];
             ?>
             <?php if ($rounds): ?>
-            <p class="text-xs text-slate-500 mb-2">Improve rounds: <?= (int)$rounds ?> (target score ≥ 9.0)</p>
+            <p class="text-xs text-slate-500 mb-2">Improve rounds: <strong><?= (int)$rounds ?></strong> (পাস মার্ক ≥ ৮.০ | ইমপ্রুভমেন্ট টার্গেট ৯.০+)</p>
+            <?php endif; ?>
+
+            <?php if (count($allReviews) > 1): ?>
+            <!-- Review progression when multiple rounds occurred -->
+            <div class="mb-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">রিভিউ ও ইমপ্রুভমেন্ট অগ্রগতি (Review Progression):</h4>
+                <div class="space-y-2 text-xs">
+                    <?php foreach ($allReviews as $rIdx => $rItem): 
+                        $rScore = (float)($rItem['score'] ?? 0);
+                        $isR1 = ($rIdx === 0);
+                        $isPass = $rScore >= 8.0;
+                    ?>
+                    <div class="p-2.5 rounded-lg bg-white border <?= $isPass ? 'border-emerald-200' : 'border-amber-200' ?>">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="w-5 h-5 rounded-full <?= $isPass ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' ?> flex items-center justify-center font-bold text-[10px]">
+                                    <?= $rIdx + 1 ?>
+                                </span>
+                                <div>
+                                    <span class="font-semibold text-slate-800"><?= $isR1 ? '১ম রাউন্ড রিভিউ (Initial)' : 'পরবর্তী রাউন্ড রিভিউ (After Improve)' ?></span>
+                                    <?php if (!empty($rItem['_provider'])): ?>
+                                    <span class="text-slate-400 font-mono text-[11px]">(<?= Sanitizer::escape($rItem['_provider']) ?>)</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="font-bold text-sm <?= $isPass ? 'text-emerald-600' : 'text-amber-600' ?>">
+                                    <?= number_format($rScore, 1) ?> / 10
+                                </span>
+                                <span class="text-[10px] block font-medium <?= $isPass ? 'text-emerald-600' : 'text-amber-700' ?>">
+                                    <?= $isPass ? '✓ পাস (≥ ৮.০)' : '✗ ফেল (৮.০ থেকে ' . number_format(8.0 - $rScore, 1) . ' কম)' ?>
+                                </span>
+                            </div>
+                        </div>
+                        <?php if (!$isPass && !empty($rItem['problems'])): ?>
+                        <div class="mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-600">
+                            <span class="text-amber-700 font-semibold">ফেল হওয়ার মূল কারণ:</span>
+                            <ul class="list-disc pl-4 mt-0.5 space-y-0.5">
+                                <?php foreach (array_slice((array)$rItem['problems'], 0, 2) as $prob): ?>
+                                <li><?= Sanitizer::escape(is_string($prob) ? $prob : json_encode($prob)) ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    <?php if ($isR1 && count($allReviews) > 1): ?>
+                    <div class="text-center text-blue-600 text-[11px] font-medium py-0.5">
+                        ↓ ৩য় মডেল দিয়ে ৯.০+ স্কোর অর্জনের লক্ষ্যে পরিমার্জিত (Improved) করা হয়েছে ↓
+                    </div>
+                    <?php endif; ?>
+                    <?php endforeach; ?>
+                </div>
+            </div>
             <?php endif; ?>
             <?php if ($detailedNotes !== ''): ?>
             <div class="mb-3 p-3 bg-slate-50 rounded-lg text-sm text-slate-700">
@@ -275,7 +329,27 @@ $sc = $statusColors[$post['status']] ?? 'bg-slate-100 text-slate-600';
                         <?php if (!empty($att['created_at'])): ?> · <?= Sanitizer::escape($att['created_at']) ?><?php endif; ?>
                     </div>
                     <?php if (!empty($att['error_message'])): ?>
-                    <div class="text-red-600 break-words"><?= Sanitizer::escape($att['error_message']) ?></div>
+                    <?php
+                        $msg = (string)$att['error_message'];
+                        $isReviewPass = str_contains($msg, 'Review Pass');
+                        $isReviewFail = str_contains($msg, 'Review Fail');
+                        $isImprove    = str_contains($msg, 'Content Improved');
+                        if ($isReviewPass):
+                    ?>
+                        <div class="mt-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            <?= Sanitizer::escape($msg) ?>
+                        </div>
+                    <?php elseif ($isReviewFail): ?>
+                        <div class="mt-1 text-[11px] font-semibold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                            <?= Sanitizer::escape($msg) ?>
+                        </div>
+                    <?php elseif ($isImprove): ?>
+                        <div class="mt-1 text-[11px] font-semibold text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                            <?= Sanitizer::escape($msg) ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="text-red-600 break-words"><?= Sanitizer::escape($msg) ?></div>
+                    <?php endif; ?>
                     <?php endif; ?>
                 </li>
                 <?php endforeach; ?>
