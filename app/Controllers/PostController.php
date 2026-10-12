@@ -288,7 +288,7 @@ class PostController
             'ai_provider_used' => $result['provider'],
         ];
 
-        $reviewResult = $ai->reviewAndImprove($reviewPayload, $id, 9.0, 2, $result['provider']);
+        $reviewResult = $ai->reviewAndImprove($reviewPayload, $id, 8.0, 2, $result['provider'], 9.0);
 
         if ($reviewResult['success'] && !empty($reviewResult['data'])) {
             $final = $reviewResult['data'];
@@ -343,12 +343,22 @@ class PostController
                     'status' => 'HUMAN_REVIEW',
                 ]);
                 Post::logStatusChange($id, 'AI_REVIEWING', 'HUMAN_REVIEW', Session::getAdminId());
+
+                $initialScoreMsg = '';
+                if (!empty($reviewResult['reviews']) && count($reviewResult['reviews']) > 1) {
+                    $r1 = $reviewResult['reviews'][0]['score'] ?? null;
+                    if ($r1 !== null) {
+                        $diff = round(8.0 - (float)$r1, 1);
+                        $initialScoreMsg = ' [১ম রাউন্ডে স্কোর ছিল: ' . $r1 . ' (৮.০ থেকে ' . $diff . ' কম ছিল), ইমপ্রুভের পর: ' . $rd['score'] . ']';
+                    }
+                }
+
                 ActivityLog::log(
                     'ai_review_completed',
                     Session::getAdminId(),
                     'post',
                     $id,
-                    'AI score: ' . $rd['score'] . ' (rounds: ' . ($reviewResult['rounds'] ?? 1) . ')'
+                    'AI score: ' . $rd['score'] . ' (rounds: ' . ($reviewResult['rounds'] ?? 1) . ')' . $initialScoreMsg
                 );
             } else {
                 Post::updateStatus($id, 'HUMAN_REVIEW', Session::getAdminId(), 'Review data missing');
@@ -387,7 +397,7 @@ class PostController
             'ai_provider_used' => $post['ai_provider_used'] ?? null,
         ];
 
-        $reviewResult = $ai->reviewAndImprove($payload, $id, 9.0, 2, $post['ai_provider_used'] ?? null);
+        $reviewResult = $ai->reviewAndImprove($payload, $id, 8.0, 2, $post['ai_provider_used'] ?? null, 9.0);
 
         if (!$reviewResult['success'] || empty($reviewResult['data'])) {
             Post::updateStatus($id, 'HUMAN_REVIEW', Session::getAdminId(), $reviewResult['error'] ?? 'Review failed');
@@ -435,7 +445,16 @@ class PostController
                 'status' => 'HUMAN_REVIEW',
             ]);
             Post::logStatusChange($id, 'AI_REVIEWING', 'HUMAN_REVIEW', Session::getAdminId());
-            ActivityLog::log('ai_review_completed', Session::getAdminId(), 'post', $id, 'AI score: ' . $rd['score']);
+
+            $initialScoreMsg = '';
+            if (!empty($reviewResult['reviews']) && count($reviewResult['reviews']) > 1) {
+                $r1 = $reviewResult['reviews'][0]['score'] ?? null;
+                if ($r1 !== null) {
+                    $diff = round(8.0 - (float)$r1, 1);
+                    $initialScoreMsg = ' [১ম রাউন্ডে স্কোর ছিল: ' . $r1 . ' (৮.০ থেকে ' . $diff . ' কম ছিল), ইমপ্রুভের পর: ' . $rd['score'] . ']';
+                }
+            }
+            ActivityLog::log('ai_review_completed', Session::getAdminId(), 'post', $id, 'AI score: ' . $rd['score'] . $initialScoreMsg);
         } else {
             Post::updateStatus($id, 'HUMAN_REVIEW', Session::getAdminId());
         }
