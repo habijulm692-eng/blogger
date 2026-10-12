@@ -164,9 +164,10 @@ class AIService
     public function reviewAndImprove(
         array $postData,
         ?int $postId = null,
-        float $minScore = 9.0,
+        float $minScore = 8.0,
         int $maxRounds = 2,
-        ?string $generatorProvider = null
+        ?string $generatorProvider = null,
+        float $targetScore = 9.0
     ): array {
         $reviews      = [];
         $current      = $postData;
@@ -209,22 +210,28 @@ class AIService
                 ];
             }
 
-            $rd           = $review['data'];
-            $reviewerIdx  = $review['_provider_index'] ?? $preferredReviewer;
-            $lastProvider = $review['provider'];
-            $lastModel    = $review['model'];
-            $reviews[]    = $rd;
-            $score        = (float) ($rd['score'] ?? 0);
+            $rd              = $review['data'];
+            $reviewerIdx     = $review['_provider_index'] ?? $preferredReviewer;
+            $lastProvider    = $review['provider'];
+            $lastModel       = $review['model'];
+            $score           = (float) ($rd['score'] ?? 0);
+            $rd['_round']    = $round;
+            $rd['_provider'] = $lastProvider;
+            $rd['_model']    = $lastModel;
+            $reviews[]       = $rd;
 
+            // Pass check: 8.0 or above passes immediately
             if ($score >= $minScore || strtoupper((string) ($rd['verdict'] ?? '')) === 'APPROVE') {
                 return [
-                    'success'  => true,
-                    'data'     => array_merge($current, ['_review' => $rd]),
-                    'provider' => $lastProvider,
-                    'model'    => $lastModel,
-                    'error'    => null,
-                    'rounds'   => $round,
-                    'reviews'  => $reviews,
+                    'success'       => true,
+                    'data'          => array_merge($current, ['_review' => $rd]),
+                    'provider'      => $lastProvider,
+                    'model'         => $lastModel,
+                    'error'         => null,
+                    'rounds'        => $round,
+                    'reviews'       => $reviews,
+                    'initial_score' => $reviews[0]['score'] ?? $score,
+                    'passed'        => true,
                 ];
             }
 
@@ -232,14 +239,14 @@ class AIService
                 break;
             }
 
-            // STEP 2: IMPROVE (when score < 9.0)
+            // STEP 2: IMPROVE (when score < 8.0, aim for 9.0+)
             // Rule: Reviewer model must NOT improve! Prefer a 3rd model (or next in line):
             $preferredImprover = ($reviewerIdx + 1) % max(1, $totalProviders);
             $improveSequence = $this->buildHandoffSequence($preferredImprover, [$reviewerIdx, $creatorIdx]);
 
             $fix = $this->executeWithSequence(
                 'improve',
-                $this->buildImprovePrompt($current, $rd),
+                $this->buildImprovePrompt($current, $rd, $minScore, $targetScore),
                 $postId,
                 fn(string $c) => $this->parseImproveResponse($c, $current),
                 $improveSequence
@@ -267,13 +274,15 @@ class AIService
 
         $finalReview = $reviews[array_key_last($reviews)] ?? null;
         return [
-            'success'  => true,
-            'data'     => array_merge($current, ['_review' => $finalReview]),
-            'provider' => $lastProvider,
-            'model'    => $lastModel,
-            'error'    => null,
-            'rounds'   => count($reviews),
-            'reviews'  => $reviews,
+            'success'       => true,
+            'data'          => array_merge($current, ['_review' => $finalReview]),
+            'provider'      => $lastProvider,
+            'model'         => $lastModel,
+            'error'         => null,
+            'rounds'        => count($reviews),
+            'reviews'       => $reviews,
+            'initial_score' => $reviews[0]['score'] ?? null,
+            'passed'        => ((float) ($finalReview['score'] ?? 0)) >= $minScore,
         ];
     }
 
@@ -564,6 +573,17 @@ PROMPT;
 
                         if ($parsed !== null) {
                             $retryLog['status']             = 'SUCCESS';
+                            if ($operation === 'review' && is_array($parsed) && isset($parsed['score'])) {
+                                $sc = (float) $parsed['score'];
+                                if ($sc >= 8.0) {
+                                    $retryLog['error_message'] = sprintf('Review Pass: %.1f/10 (≥ 8.0 পাস মার্ক অর্জিত)', $sc);
+                                } else {
+                                    $diff = round(8.0 - $sc, 1);
+                                    $retryLog['error_message'] = sprintf('Review Fail: %.1f/10 (৮.০ পাস মার্কের চেয়ে %.1f কম — ৯.০+ টার্গেট নিয়ে Improve করা হচ্ছে)', $sc, $diff);
+                                }
+                            } elseif ($operation === 'improve') {
+                                $retryLog['error_message'] = 'Content Improved (টার্গেট ৯.০+ অর্জনের জন্য ফিডব্যাক অনুযায়ী সংশোধন করা হয়েছে)';
+                            }
                             $retryLog['prompt_tokens']      = $retryResult['tokens']['prompt_tokens'] ?? null;
                             $retryLog['completion_tokens']  = $retryResult['tokens']['completion_tokens'] ?? null;
                             $retryLog['total_tokens']       = $retryResult['tokens']['total_tokens'] ?? null;
@@ -600,6 +620,9 @@ PROMPT;
                                 'excerpt'          => $this->extractExcerptFromRaw($result['content']),
                             ];
                             $retryLog['status'] = 'SUCCESS';
+                            if ($operation === 'improve') {
+                                $retryLog['error_message'] = 'Content Improved (টার্গেট ৯.০+ অর্জনের জন্য ফিডব্যাক অনুযায়ী সংশোধন করা হয়েছে)';
+                            }
                             AiUsageLog::create($retryLog);
                             $attempts[] = [
                                 'provider' => $provider->getName(),
@@ -635,6 +658,17 @@ PROMPT;
             }
 
             $logData['status'] = 'SUCCESS';
+            if ($operation === 'review' && is_array($parsed) && isset($parsed['score'])) {
+                $sc = (float) $parsed['score'];
+                if ($sc >= 8.0) {
+                    $logData['error_message'] = sprintf('Review Pass: %.1f/10 (≥ 8.0 পাস মার্ক অর্জিত)', $sc);
+                } else {
+                    $diff = round(8.0 - $sc, 1);
+                    $logData['error_message'] = sprintf('Review Fail: %.1f/10 (৮.০ পাস মার্কের চেয়ে %.1f কম — ৯.০+ টার্গেট নিয়ে Improve করা হচ্ছে)', $sc, $diff);
+                }
+            } elseif ($operation === 'improve') {
+                $logData['error_message'] = 'Content Improved (টার্গেট ৯.০+ অর্জনের জন্য ফিডব্যাক অনুযায়ী সংশোধন করা হয়েছে)';
+            }
             AiUsageLog::create($logData);
 
             Logger::info('AI request succeeded', [
@@ -786,8 +820,11 @@ Evaluate thoroughly:
 Scoring rules:
 - Each sub-score 0-10
 - overall "score" = average of grammar_score, seo_score, readability_score, structure_score (one decimal allowed)
-- Be strict: 9.0+ only if publication-ready with minor or no issues
-- Below 9.0 must list concrete problems and required_changes
+- Pass mark threshold is 8.0:
+  * Score >= 8.0 is PASS / publication-ready.
+  * Score < 8.0 is FAIL and requires correction.
+  * 9.0+ represents publication-ready excellence (the ideal target).
+- When below 8.0, list concrete problems and required_changes so the improvement phase can elevate the score to 9.0+.
 
 problems / suggestions / required_changes must be specific bullet strings (not vague).
 Include detailed_notes: 3-8 sentences summarizing strengths and weaknesses.
@@ -808,7 +845,7 @@ Return ONLY valid JSON (no markdown fences):
 PROMPT;
     }
 
-    private function buildImprovePrompt(array $data, array $review): string
+    private function buildImprovePrompt(array $data, array $review, float $passScore = 8.0, float $targetScore = 9.0): string
     {
         $title       = $data['title'] ?? '';
         $meta        = $data['meta_description'] ?? '';
@@ -818,13 +855,17 @@ PROMPT;
         $suggestions = json_encode($review['suggestions'] ?? [], JSON_UNESCAPED_UNICODE);
         $required    = json_encode($review['required_changes'] ?? [], JSON_UNESCAPED_UNICODE);
         $notes       = $review['detailed_notes'] ?? '';
+        $score       = (float) ($review['score'] ?? 0);
+        $deficit     = round(max(0.0, $passScore - $score), 1);
 
         if (mb_strlen($content) > 12000) {
             $content = mb_substr($content, 0, 12000);
         }
 
         return <<<PROMPT
-You are an expert blog editor. Improve the post so it can score 9.0+ on editorial review.
+You are an expert senior blog editor.
+The previous review scored {$score}/10, which failed the minimum pass mark of {$passScore}/10 (short by {$deficit} points).
+Your goal is to thoroughly improve the post through editorial feedback so that on re-review it achieves a score of {$targetScore}+ (at least 9.0+).
 
 Primary keyword: {$keyword}
 Current title: {$title}
@@ -832,7 +873,7 @@ Current meta: {$meta}
 Current HTML content:
 {$content}
 
-Review score: {$review['score']}
+Previous Review Score: {$score} / 10 (Pass mark is {$passScore}, aiming for {$targetScore}+)
 Problems: {$problems}
 Suggestions: {$suggestions}
 Required changes: {$required}
