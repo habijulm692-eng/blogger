@@ -718,14 +718,21 @@ PROMPT;
             ? implode(', ', $data['secondary_keywords'])
             : ($data['secondary_keywords'] ?? '');
         $audience  = $data['target_audience'] ?? 'General Bangladesh Readers';
-        $language  = ($data['language'] ?? 'bn') === 'bn' ? 'Bengali (বাংলা)' : 'English';
+        $isBn      = ($data['language'] ?? 'bn') === 'bn';
+        $language  = $isBn ? 'Bengali (বাংলা)' : 'English';
         $wordCount = $data['word_count'] ?? 1000;
         $tone      = $data['writing_tone'] ?? 'Professional + Easy';
 
-        return <<<PROMPT
-তুমি একজন অভিজ্ঞ বাংলা ব্লগ লেখক।
+        $personaHeader = $isBn
+            ? "তুমি একজন অভিজ্ঞ প্রযুক্তি বিশেষজ্ঞ এবং প্র্যাকটিক্যাল কন্টেন্ট রাইটার। বাস্তব অভিজ্ঞতা এবং হ্যান্ডস-অন টেস্টিং ছাড়া তুমি কোনো জেনেরিক রিভিউ লেখো না।\n\nনিচের তথ্যের উপর একটি সম্পূর্ণ, মানসম্মত এবং তথ্যপূর্ণ ব্লগ পোস্ট লিখো।"
+            : "You are an expert hands-on tech researcher and specialist content writer. You prioritize real-world experience, practical testing data, and empirical benchmarks over generic summaries.\n\nWrite a comprehensive, publication-ready, and insightful blog post based on the following details.";
 
-নিচের তথ্যের উপর একটি সম্পূর্ণ, মানসম্মত এবং তথ্যপূর্ণ ব্লগ পোস্ট লিখো।
+        $titleRule = $isBn
+            ? '- আকর্ষণীয় কিন্তু clickbait নয় এমন Title তৈরি করো।'
+            : '- Craft an engaging, high-CTR title that avoids clickbait and matches user search intent.';
+
+        return <<<PROMPT
+{$personaHeader}
 
 Topic: {$topic}
 Primary Keyword: {$primary}
@@ -736,7 +743,7 @@ Word Count: approximately {$wordCount} words
 Writing Tone: {$tone}
 
 Rules:
-- আকর্ষণীয় কিন্তু clickbait নয় এমন Title তৈরি করো।
+{$titleRule}
 
 1. Initial Layout & Introduction:
    - Do NOT insert any image, figure, or image placeholder right after the title/author or before the introduction text.
@@ -770,6 +777,25 @@ Rules:
    - Spammy language ব্যবহার করবে না।
    - ভুল বা বানানো তথ্য তৈরি করবে না।
    - Content HTML format-এ দিতে হবে (use <h2>, <h3>, <p>, <ul>, <li>, <strong>, <a> tags).
+
+6. Hands-on Testing & Real-world Benchmarks (E-E-A-T Focus):
+   - যদি আর্টিকেলে কোনো সফটওয়্যার, টুল, গ্যাজেট, প্ল্যাটফর্ম বা পদ্ধতির রিভিউ বা টিপস থাকে, তবে প্রতিটির ক্ষেত্রে শুধুমাত্র সাধারণ ভাসাভাসা কথা না লিখে একটি বাস্তবসম্মত টেস্টিং ও বেঞ্চমার্ক ফ্রেমওয়ার্ক (Hands-on Test / Benchmark) তৈরি করতে হবে।
+   - লেখার ভয়েস হবে ফার্স্ট-পারসন বাস্তব অভিজ্ঞতা সম্পন্ন (যেমন: "In our hands-on test", "During my evaluation run", "আমরা ৫০০ শব্দের ড্রাফট দিয়ে পরীক্ষা করার সময় দেখেছি" ইত্যাদি)।
+   - প্রতিটি টুলের বা বিষয়ের জন্য বাস্তবসম্মত ডেমো মেট্রিক্স (Realistic Demo Test Data) প্রদান করতে হবে (যেমন: টেস্ট স্যাম্পল সাইজ, প্রসেসিং টাইম, বিভিন্ন ডিটেক্টরে পাওয়া স্কোর বা পারফরম্যান্স রেট)। এটি একটি সুন্দর HTML কার্ড বা বক্সে সাজিয়ে দিতে হবে, যাতে পরবর্তীতে ইউজার সরাসরি তার আসল টেস্ট ডাটা দিয়ে মানগুলো এডিট করতে পারে:
+     <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #2563eb; border-radius: 8px; padding: 16px 20px; margin: 24px 0;">
+       <h4 style="margin: 0 0 10px 0; color: #1e293b; font-size: 15px; font-weight: 600;">📊 Hands-on Test Benchmark: [টুল বা বিষয়ের নাম]</h4>
+       <ul style="margin: 0; padding-left: 18px; color: #475569; font-size: 14px; line-height: 1.6;">
+         <li><strong>Test Sample:</strong> [টেস্টের স্যাম্পল সাইজ বা ইনপুট]</li>
+         <li><strong>Processing Time / Speed:</strong> [প্রসেসিং সময় বা স্পিড]</li>
+         <li><strong>Accuracy / Performance Score:</strong> [স্কোর বা পারফরম্যান্স রেট]</li>
+         <li><strong>Key Observation:</strong> [বাস্তব পরীক্ষায় পাওয়া বিশেষ পর্যবেক্ষণ]</li>
+       </ul>
+     </div>
+   - টুলের ভালো দিকের পাশাপাশি বাস্তব পরীক্ষায় ধরা পড়া খুঁত বা লিমিটেশন (Real Testing Friction) পরিষ্কারভাবে উল্লেখ করতে হবে।
+
+7. Human Writing Style & Zero AI Cliches:
+   - লেখার মধ্যে অতি-ব্যবহৃত রোবোটিক শব্দ বা এআই ক্লিশে (যেমন: "delve into", "tapestry", "in this digital era", "revolutionize", "testament", "beacon", "game-changer", "let's dive in", "a testament to") কঠোরভাবে পরিহার করতে হবে।
+   - কৃত্রিম মার্কেটিং অতিরঞ্জন বাদ দিয়ে স্বাভাবিক, ছোট-বড় বাক্যের মিশ্রণে মানুষের লেখার মতো স্বতঃস্ফূর্ত ছন্দ ও প্রবাহ (natural rhythm & burstiness) বজায় রাখতে হবে।
 
 Output অবশ্যই structured JSON format-এ দিতে হবে। Return ONLY valid JSON, no markdown code blocks, no explanation:
 
