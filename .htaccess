@@ -1,0 +1,31 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # For XAMPP subdirectory install (folder name = blogger), uncomment next line:
+    # RewriteBase /blogger/
+
+    # Allow direct access to assets
+    RewriteRule ^assets/(.*)$ assets/$1 [L]
+
+    # Block sensitive paths
+    RewriteRule ^(app|config|database|cron|storage|routes)(/|$) - [F,L]
+    RewriteRule ^\.env - [F,L]
+    RewriteRule ^composer\.(json|lock)$ - [F,L]
+    RewriteRule ^\.git - [F,L]
+
+    # Serve real files as-is
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Route everything else through front controller
+    RewriteRule ^ index.php [L,QSA]
+</IfModule>
+
+DirectoryIndex index.php
+Options -Indexes
+
+# PHP settings helpful for AI timeouts (if allowed by host)
+<IfModule mod_php.c>
+    php_value max_execution_time 180
+</IfModule>
