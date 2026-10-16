@@ -1,0 +1,35 @@
+# ===== AI Providers (copy into your live .env) =====
+# Fallback order: Gemini Flash 3.5 → Gemini Flash 3 → SambaNova → Xkero → Apinex → Groq
+
+# 1. Google Gemini Flash 3.5 (Primary) & Google Gemini Flash 3 (Secondary)
+GEMINI_API_KEY=your_gemini_key_here
+GEMINI_MODEL_PRIMARY=gemini-3.5-flash
+GEMINI_MODEL_SECONDARY=gemini-3-flash
+GEMINI_TIMEOUT=180
+
+# 2. SambaNova Cloud
+SAMBANOVA_API_KEY=your_sambanova_key_here
+SAMBANOVA_MODEL=Meta-Llama-3.3-70B-Instruct
+SAMBANOVA_BASE_URL=https://api.sambanova.ai/v1
+SAMBANOVA_TIMEOUT=120
+
+# 3. Xkero / xKiro
+XKERO_API_KEY=your_xkero_key_here
+XKERO_MODEL=Qwen/Qwen2.5-72B-Instruct
+XKERO_BASE_URL=https://api.xkiro.com/v1
+XKERO_TIMEOUT=120
+
+# 4. Apinex
+APINEX_API_KEY=your_apinex_key_here
+APINEX_MODEL=gpt-4o-mini
+APINEX_BASE_URL=https://api.apinex.com/v1
+APINEX_TIMEOUT=120
+
+# 5. Groq Cloud
+GROQ_API_KEY=your_groq_key_here
+GROQ_MODEL=llama-3.1-8b-instant
+GROQ_TIMEOUT=90
+
+# Remove these if still present (no longer used):
+# OPENROUTER_*
+# CLOUDFLARE_*

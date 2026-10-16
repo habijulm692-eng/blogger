@@ -1,0 +1,16 @@
+[2026-10-10 05:10:35] [WARNING] AiProviderConfig::getAll DB error, falling back to cache {"error":"Database connection failed: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for sql113.infinityfree.com failed: No such host is known. "}
+[2026-10-10 05:20:15] [WARNING] AiProviderConfig::getAll DB error, falling back to cache {"error":"Database connection failed: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for sql113.infinityfree.com failed: No such host is known. "}
+[2026-10-10 05:20:15] [WARNING] AiProviderConfig::getEnabledOrder DB error {"error":"Database connection failed: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for sql113.infinityfree.com failed: No such host is known. "}
+[2026-10-10 05:21:11] [WARNING] AiProviderConfig::setEnabled DB error {"error":"Database connection failed: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for sql113.infinityfree.com failed: No such host is known. "}
+[2026-10-10 05:21:11] [WARNING] AiProviderConfig::getAll DB error, falling back to cache {"error":"Database connection failed: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for sql113.infinityfree.com failed: No such host is known. "}
+[2026-10-10 05:21:11] [WARNING] AiProviderConfig::setEnabled DB error {"error":"Database connection failed: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for sql113.infinityfree.com failed: No such host is known. "}
+[2026-10-10 05:21:11] [WARNING] AiProviderConfig::getAll DB error, falling back to cache {"error":"Database connection failed: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for sql113.infinityfree.com failed: No such host is known. "}
+[2026-10-10 06:46:59] [WARNING] AiProviderConfig::getEnabledOrder DB error {"error":"Database connection failed: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for sql113.infinityfree.com failed: No such host is known. "}
+[2026-10-10 06:46:59] [INFO] AIService: JSON decode failed in improve process, falling back to raw response string as content {"raw_length":172}
+[2026-10-10 06:46:59] [INFO] AIService: JSON decode failed in improve process, falling back to raw response string as content {"raw_length":147}
+[2026-10-10 06:46:59] [INFO] AIService: JSON decode failed in improve process, falling back to raw response string as content {"raw_length":114}
+[2026-10-10 07:34:34] [WARNING] AiProviderConfig::getEnabledOrder DB error {"error":"Database connection failed: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for sql113.infinityfree.com failed: No such host is known. "}
+[2026-10-10 07:35:26] [WARNING] AiProviderConfig::getEnabledOrder DB error {"error":"Database connection failed: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for sql113.infinityfree.com failed: No such host is known. "}
+[2026-10-10 09:16:13] [WARNING] AiProviderConfig::getEnabledOrder DB error {"error":"Database connection failed: SQLSTATE[HY000] [2002] php_network_getaddresses: getaddrinfo for sql113.infinityfree.com failed: No such host is known. "}
+[2026-10-10 09:16:13] [INFO] AIService: JSON decode failed in generate process, using resilient fallback from raw content {"raw_length":438}
+[2026-10-10 09:16:13] [INFO] AIService: JSON decode failed in generate process, using resilient fallback from raw content {"raw_length":480}
