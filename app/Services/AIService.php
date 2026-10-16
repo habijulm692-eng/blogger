@@ -449,6 +449,80 @@ PROMPT;
      *
      * @param int[] $orderedIdxs
      */
+    /**
+     * Check if an error message represents high demand / overloaded condition.
+     * Specifically handles:
+     * - "This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."
+     * - Overloaded, temporary demand spikes, resource exhaustion due to high traffic.
+     */
+    public function isHighDemandError(?string $error): bool
+    {
+        if ($error === null || trim($error) === '') {
+            return false;
+        }
+
+        $lower = strtolower($error);
+
+        if (str_contains($lower, 'experiencing high demand')) {
+            return true;
+        }
+        if (str_contains($lower, 'spikes in demand')) {
+            return true;
+        }
+        if (str_contains($lower, 'high demand')) {
+            return true;
+        }
+        if (str_contains($lower, 'model is overloaded') || str_contains($lower, 'overloaded')) {
+            return true;
+        }
+        if (str_contains($lower, 'temporarily unavailable') || str_contains($lower, 'service unavailable')) {
+            return true;
+        }
+        if (str_contains($lower, 'resource_exhausted') && (str_contains($lower, 'quota') || str_contains($lower, 'rate') || str_contains($lower, 'demand') || str_contains($lower, 'temporary'))) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Call provider with automatic retry for high-demand errors only.
+     * Retries up to 2 times, waiting 3 seconds before each retry attempt.
+     */
+    private function callProviderWithRetry(AIProviderInterface $provider, string $prompt, array $options = []): array
+    {
+        $result = $provider->generate($prompt, $options);
+        $maxRetries = 2;
+        $attempt = 0;
+
+        while (!$result['success'] && $this->isHighDemandError($result['error'] ?? '') && $attempt < $maxRetries) {
+            $attempt++;
+            Logger::warning("AI provider high demand detected [{$provider->getName()}]. Waiting 3 seconds before retry (Attempt {$attempt}/{$maxRetries})...", [
+                'provider' => $provider->getName(),
+                'error'    => $result['error'] ?? '',
+                'attempt'  => $attempt,
+            ]);
+
+            sleep(3);
+
+            $result = $provider->generate($prompt, $options);
+
+            if ($result['success']) {
+                Logger::info("AI provider high demand retry succeeded on attempt {$attempt} [{$provider->getName()}]", [
+                    'provider' => $provider->getName(),
+                    'attempt'  => $attempt,
+                ]);
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Core execution: Try providers in exact passed sequence, with auto-retry and logging.
+     *
+     * @param int[] $orderedIdxs
+     */
     public function executeWithSequence(
         string $operation,
         string $prompt,
@@ -482,7 +556,7 @@ PROMPT;
                 'index'     => $providerIdx,
             ]);
 
-            $result = $provider->generate($prompt, $options);
+            $result = $this->callProviderWithRetry($provider, $prompt, $options);
 
             $endMs        = (int) (microtime(true) * 1000);
             $responseTime = date('Y-m-d H:i:s');
@@ -546,7 +620,7 @@ PROMPT;
                     Logger::warning('Invalid JSON from AI, retrying', ['provider' => $provider->getName()]);
 
                     $retryPrompt = $prompt . "\n\nIMPORTANT: Your previous response was not valid JSON. Return ONLY valid JSON, no markdown, no explanation.";
-                    $retryResult = $provider->generate($retryPrompt, $options);
+                    $retryResult = $this->callProviderWithRetry($provider, $retryPrompt, $options);
 
                     $retryEndMs              = (int) (microtime(true) * 1000);
                     $retryLog                = $logData;
@@ -756,9 +830,14 @@ Rules:
    - Write an in-depth, research-style article with practical examples, pros/cons, step-by-step sections, and actionable tips. Avoid shallow one-liners.
    - Conclusion সেকশন থাকবে।
 
-3. Balanced Image Distribution:
-   - Distribute images evenly across the entire length of the article (from top to bottom), rather than clustering them at the beginning.
-   - If image figures or placeholders are included, place them under different H2 headings across the body.
+3. Balanced Image Distribution & Contextual Image Notes:
+   - Do NOT output actual <img> tags or external image URLs.
+   - Instead, place short bracketed Image Notes indicating where images must appear:
+     * First image note MUST appear directly after at least 2 substantive introductory paragraphs (Hero Image).
+     * 2 to 3 additional image notes MUST be distributed across the body under different H2 headings.
+   - Format:
+     <p style="font-size:12px;color:#64748b;font-style:italic;margin:20px 0 6px 0;font-weight:500;">[Image Note: concise visual requirement describing what kind of image fits this specific section according to the article, e.g. Developer debugging code on IDE / Dashboard UI interface]</p>
+   - The Image Note text MUST be context-specific to the article content at that section (describing what screenshot, diagram, or UI should be shown).
 
 4. Context-Aware Links & Optional Buttons (Strict Condition):
    - Default Behavior: By default, ALL links must be regular inline HTML hyperlinks (<a href="..." target="_blank" rel="noopener noreferrer">anchor text</a>).
@@ -837,7 +916,7 @@ Evaluate thoroughly:
 3) Readability (short paragraphs, clarity, flow)
 4) Structure (H2/H3 hierarchy, intro, steps, conclusion)
 5) Initial Layout & Introduction: Verify that the post starts directly with at least 2 substantive introductory paragraphs before any image appears (no image right after title or before intro text).
-6) Balanced Image Distribution: If images/figures exist, verify they are evenly distributed from top to bottom, not clustered at the start.
+6) Balanced Image Distribution & Image Notes: Verify that image notes [Image Note: ...] are evenly distributed across the article (first after at least 2 intro paragraphs, others under H2 sections) and that each note accurately reflects the specific article section content rather than being generic.
 7) Context-Aware Links & Optional Buttons: Verify all links use target="_blank" rel="noopener noreferrer". Verify that styled CTA buttons are strictly conditional: only 1 or at most 2 buttons, used ONLY when there is a direct high-value action (testing a tool, downloading a template, action in conclusion), and NEVER on purely informational articles. Verify button formatting matches <div style="text-align: center; margin: 28px 0;"><a ... style="display: inline-block; background: linear-gradient(135deg, #2563eb, #1d4ed8); ...">... &rarr;</a></div>.
 8) Usefulness (actionable steps, examples, completeness)
 9) Originality / non-spam
@@ -909,7 +988,7 @@ Rules:
 - Fix ALL listed problems and apply required_changes.
 - Keep language of the original post (Bengali or English).
 - Initial Layout: Ensure the post starts directly with at least 2 substantive introductory paragraphs (<p>...</p>) before any image appears. Do NOT put any image or image placeholder right after the title or before the intro text.
-- Balanced Image Distribution: Distribute images evenly across the entire length of the article (from top to bottom), rather than clustering them at the beginning.
+- Balanced Image Distribution & Image Notes: Ensure [Image Note: ...] paragraphs are preserved and distributed evenly (first after at least 2 intro paragraphs, others under H2 sections), with notes reflecting the specific article section.
 - Context-Aware Links & Optional Buttons:
   * By default, keep all links as regular inline HTML hyperlinks (<a href="..." target="_blank" rel="noopener noreferrer">anchor text</a>).
   * Only use a styled CTA button IF the article naturally contains a direct, high-value action (e.g. testing software/tools, downloading a template, explicit action in conclusion).
