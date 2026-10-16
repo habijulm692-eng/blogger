@@ -1,0 +1,44 @@
+[
+    {
+        "id": 1,
+        "name": "gemini_primary",
+        "display_name": "Google Gemini Flash 3.5",
+        "is_enabled": 1,
+        "priority": 1
+    },
+    {
+        "id": 2,
+        "name": "gemini_secondary",
+        "display_name": "Google Gemini Flash 3",
+        "is_enabled": 1,
+        "priority": 2
+    },
+    {
+        "id": 3,
+        "name": "sambanova",
+        "display_name": "SambaNova",
+        "is_enabled": 1,
+        "priority": 3
+    },
+    {
+        "id": 4,
+        "name": "xkero",
+        "display_name": "Xkero (Qwen)",
+        "is_enabled": 1,
+        "priority": 4
+    },
+    {
+        "id": 5,
+        "name": "apinex",
+        "display_name": "Apinex",
+        "is_enabled": 1,
+        "priority": 5
+    },
+    {
+        "id": 6,
+        "name": "groq",
+        "display_name": "Groq",
+        "is_enabled": 1,
+        "priority": 6
+    }
+]
