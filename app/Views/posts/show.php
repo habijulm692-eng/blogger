@@ -385,6 +385,85 @@ $sc = $statusColors[$post['status']] ?? 'bg-slate-100 text-slate-600';
             </div>
             <?php endif; ?>
         </div>
+
+        <!-- Social Media & AI Master Prompt Generator -->
+        <div class="bg-white rounded-xl border border-slate-200 p-5 space-y-4" id="social-media-card">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">📣</span>
+                    <h3 class="font-semibold text-slate-800 text-sm">সোশ্যাল মিডিয়া ক্যাপশন</h3>
+                </div>
+                <span class="text-xs text-slate-400">+ AI Prompt</span>
+            </div>
+
+            <!-- Generate button -->
+            <button type="button" id="btn-generate-social"
+                onclick="generateSocialMedia()"
+                class="w-full py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-lg transition flex items-center justify-center gap-2">
+                <span id="social-btn-icon">✨</span>
+                <span id="social-btn-text">Generate করুন</span>
+            </button>
+
+            <!-- Result area (hidden until generated) -->
+            <div id="social-result" class="hidden space-y-3">
+                <!-- Platform Tabs -->
+                <div class="flex flex-wrap gap-1 border-b border-slate-200 pb-2" id="social-tabs">
+                    <?php
+                    $platforms = [
+                        'facebook'  => ['icon' => 'f', 'label' => 'Facebook', 'color' => 'bg-blue-600'],
+                        'instagram' => ['icon' => '📷', 'label' => 'Instagram', 'color' => 'bg-pink-500'],
+                        'twitter'   => ['icon' => '𝕏', 'label' => 'Twitter/X', 'color' => 'bg-slate-900'],
+                        'linkedin'  => ['icon' => 'in', 'label' => 'LinkedIn', 'color' => 'bg-blue-700'],
+                        'youtube'   => ['icon' => '▶', 'label' => 'YouTube', 'color' => 'bg-red-600'],
+                        'prompt'    => ['icon' => '🤖', 'label' => 'Master Prompt', 'color' => 'bg-violet-600'],
+                    ];
+                    foreach ($platforms as $key => $p):
+                    ?>
+                    <button type="button"
+                        onclick="switchTab('<?= $key ?>')"
+                        id="tab-<?= $key ?>"
+                        class="social-tab-btn text-xs px-2.5 py-1 rounded-md font-medium transition border
+                            <?= $key === 'facebook' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400' ?>">
+                        <?= $p['icon'] ?> <?= $p['label'] ?>
+                    </button>
+                    <?php endforeach; ?>
+                </div>
+
+                <!-- Caption panels -->
+                <?php foreach ($platforms as $key => $p): ?>
+                <div id="panel-<?= $key ?>" class="social-panel <?= $key !== 'facebook' ? 'hidden' : '' ?> space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-600">
+                            <?= $p['icon'] ?> <?= $p['label'] ?>
+                            <?php if ($key !== 'prompt'): ?>
+                            <span id="char-count-<?= $key ?>" class="text-slate-400 font-normal ml-1">(0 chars)</span>
+                            <?php endif; ?>
+                        </span>
+                        <button type="button" onclick="copyCaption('<?= $key ?>')"
+                            class="text-xs px-2.5 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded font-medium text-slate-700 transition flex items-center gap-1">
+                            <span>📋</span> <span id="copy-label-<?= $key ?>">Copy</span>
+                        </button>
+                    </div>
+                    <textarea id="caption-<?= $key ?>"
+                        rows="<?= $key === 'prompt' ? 10 : 4 ?>"
+                        class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg resize-y focus:ring-2 focus:ring-violet-500 focus:outline-none font-mono leading-relaxed bg-slate-50"
+                        placeholder="Generate করলে এখানে আসবে..."
+                        oninput="updateCharCount('<?= $key ?>')"></textarea>
+                    <?php if ($key === 'prompt'): ?>
+                    <p class="text-[10px] text-slate-400">এই Prompt টি ChatGPT, Gemini, Claude বা যেকোনো AI টুলে সরাসরি ব্যবহার করুন।</p>
+                    <?php endif; ?>
+                </div>
+                <?php endforeach; ?>
+
+                <!-- Copy All button -->
+                <button type="button" onclick="copyAll()"
+                    class="w-full py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-medium rounded-lg transition">
+                    📋 সবগুলো একসাথে Copy করুন
+                </button>
+            </div>
+
+            <p id="social-hint" class="text-[10px] text-slate-400 text-center">পোস্টের কনটেন্টের উপর ভিত্তি করে সোশ্যাল মিডিয়া ক্যাপশন ও AI Master Prompt তৈরি হবে।</p>
+        </div>
     </div>
 </div>
 
@@ -617,6 +696,169 @@ document.addEventListener('DOMContentLoaded', () => {
     updateSelectedCount();
     tagArticleImages();
 });
+
+// ─── Social Media Caption & AI Master Prompt Generator ───────────────────────
+
+const SOCIAL_PLATFORMS = ['facebook', 'instagram', 'twitter', 'linkedin', 'youtube', 'prompt'];
+const SOCIAL_FIELD_MAP = {
+    facebook:  'facebook_caption',
+    instagram: 'instagram_caption',
+    twitter:   'twitter_caption',
+    linkedin:  'linkedin_caption',
+    youtube:   'youtube_description',
+    prompt:    'master_prompt',
+};
+
+let currentSocialTab = 'facebook';
+
+async function generateSocialMedia() {
+    const btn = document.getElementById('btn-generate-social');
+    const icon = document.getElementById('social-btn-icon');
+    const text = document.getElementById('social-btn-text');
+    const result = document.getElementById('social-result');
+    const hint = document.getElementById('social-hint');
+
+    btn.disabled = true;
+    icon.textContent = '⏳';
+    text.textContent = 'Generate হচ্ছে...';
+    btn.classList.add('opacity-75');
+
+    try {
+        const res = await App.fetch('/posts/' + POST_ID + '/social-media', {
+            method: 'POST',
+            body: {},
+        });
+
+        if (res.data) {
+            // Fill in all textareas
+            SOCIAL_PLATFORMS.forEach(key => {
+                const field = SOCIAL_FIELD_MAP[key];
+                const ta = document.getElementById('caption-' + key);
+                if (ta && res.data[field] !== undefined) {
+                    ta.value = res.data[field];
+                    updateCharCount(key);
+                }
+            });
+
+            // Show result panel
+            result.classList.remove('hidden');
+            hint.classList.add('hidden');
+
+            // Switch to first tab
+            switchTab('facebook');
+
+            App.toast('সোশ্যাল মিডিয়া ক্যাপশন ও AI Master Prompt তৈরি হয়েছে! 🎉', 'success');
+        }
+    } catch (e) {
+        App.toast(e.message || 'Generate করতে সমস্যা হয়েছে।', 'error');
+    } finally {
+        btn.disabled = false;
+        icon.textContent = '🔄';
+        text.textContent = 'পুনরায় Generate করুন';
+        btn.classList.remove('opacity-75');
+    }
+}
+
+function switchTab(key) {
+    currentSocialTab = key;
+
+    // Update tab button styles
+    SOCIAL_PLATFORMS.forEach(k => {
+        const tabBtn = document.getElementById('tab-' + k);
+        const panel = document.getElementById('panel-' + k);
+        if (!tabBtn || !panel) return;
+
+        if (k === key) {
+            tabBtn.className = tabBtn.className
+                .replace('bg-white text-slate-600 border-slate-200 hover:border-slate-400', '')
+                .trim();
+            // Apply active color based on platform
+            const colorMap = {
+                facebook: 'bg-blue-600 text-white border-blue-600',
+                instagram: 'bg-pink-500 text-white border-pink-500',
+                twitter: 'bg-slate-900 text-white border-slate-900',
+                linkedin: 'bg-blue-700 text-white border-blue-700',
+                youtube: 'bg-red-600 text-white border-red-600',
+                prompt: 'bg-violet-600 text-white border-violet-600',
+            };
+            if (!tabBtn.className.includes('text-white')) {
+                tabBtn.className += ' ' + (colorMap[k] || 'bg-slate-600 text-white border-slate-600');
+            }
+            panel.classList.remove('hidden');
+        } else {
+            // Reset to inactive
+            tabBtn.className = 'social-tab-btn text-xs px-2.5 py-1 rounded-md font-medium transition border bg-white text-slate-600 border-slate-200 hover:border-slate-400';
+            panel.classList.add('hidden');
+        }
+    });
+}
+
+function updateCharCount(key) {
+    if (key === 'prompt') return; // no char count for master prompt
+    const ta = document.getElementById('caption-' + key);
+    const counter = document.getElementById('char-count-' + key);
+    if (ta && counter) {
+        const len = ta.value.length;
+        counter.textContent = '(' + len + ' chars)';
+    }
+}
+
+async function copyCaption(key) {
+    const ta = document.getElementById('caption-' + key);
+    const label = document.getElementById('copy-label-' + key);
+    if (!ta || !ta.value.trim()) {
+        App.toast('কপি করার মতো কনটেন্ট নেই। আগে Generate করুন।', 'error');
+        return;
+    }
+    try {
+        await navigator.clipboard.writeText(ta.value);
+        if (label) {
+            label.textContent = 'Copied!';
+            setTimeout(() => { label.textContent = 'Copy'; }, 2000);
+        }
+        App.toast('Copied to clipboard! ✅', 'success');
+    } catch (e) {
+        // Fallback: select text
+        ta.select();
+        document.execCommand('copy');
+        if (label) {
+            label.textContent = 'Copied!';
+            setTimeout(() => { label.textContent = 'Copy'; }, 2000);
+        }
+        App.toast('Copied! ✅', 'success');
+    }
+}
+
+async function copyAll() {
+    const parts = [];
+    const labels = {
+        facebook:  '📘 Facebook Caption',
+        instagram: '📷 Instagram Caption',
+        twitter:   '𝕏 Twitter/X Caption',
+        linkedin:  '💼 LinkedIn Caption',
+        youtube:   '▶ YouTube Description',
+        prompt:    '🤖 AI Master Prompt',
+    };
+    SOCIAL_PLATFORMS.forEach(key => {
+        const ta = document.getElementById('caption-' + key);
+        if (ta && ta.value.trim()) {
+            parts.push((labels[key] || key.toUpperCase()) + ':\n' + ta.value.trim());
+        }
+    });
+
+    if (!parts.length) {
+        App.toast('কপি করার মতো কনটেন্ট নেই। আগে Generate করুন।', 'error');
+        return;
+    }
+
+    const allText = parts.join('\n\n' + '─'.repeat(40) + '\n\n');
+    try {
+        await navigator.clipboard.writeText(allText);
+        App.toast('সবগুলো Clipboard-এ Copy হয়েছে! ✅', 'success');
+    } catch (e) {
+        App.toast('Copy করতে সমস্যা হয়েছে। ম্যানুয়ালি সিলেক্ট করুন।', 'error');
+    }
+}
 </script>
 
 <?php
