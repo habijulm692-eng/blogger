@@ -847,6 +847,34 @@ class PostController
         ], sprintf('%d টি ছবি সফলভাবে পরিবর্তন করা হয়েছে!', $result['changed']));
     }
 
+    /**
+     * Generate social media captions and AI master prompt for a post (AJAX only).
+     */
+    public function socialMedia(int $id): void
+    {
+        $post = Post::findById($id);
+        if (!$post) {
+            Response::error('Post not found', 404);
+        }
+
+        $this->assertPostOwner($post);
+
+        if (empty($post['title']) && empty($post['content_html'])) {
+            Response::error('পোস্টে কনটেন্ট জেনারেট করুন আগে। Title বা Content পাওয়া যায়নি।', 400);
+        }
+
+        $ai = new AIService();
+        $result = $ai->generateSocialMedia($post, $id);
+
+        if (!$result['success']) {
+            Response::error($result['error'] ?? 'Social media generation failed', 500);
+        }
+
+        ActivityLog::log('social_media_generated', Session::getAdminId(), 'post', $id, 'Social media captions + master prompt generated via ' . ($result['provider'] ?? 'AI'));
+
+        Response::success($result['data'], 'Social media content generated successfully');
+    }
+
     private function isAjax(): bool
 
     {
@@ -867,3 +895,4 @@ class PostController
         }
     }
 }
+
