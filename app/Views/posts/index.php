@@ -64,6 +64,7 @@ $statusColors = [
                     <td class="px-5 py-3 text-right space-x-2">
                         <a href="<?= htmlspecialchars(\App\Helpers\Url::to('/posts/' . (int)$p['id']), ENT_QUOTES, 'UTF-8') ?>" class="text-blue-600 hover:underline text-xs">View</a>
                         <a href="<?= htmlspecialchars(\App\Helpers\Url::to('/posts/' . (int)$p['id'] . '/edit'), ENT_QUOTES, 'UTF-8') ?>" class="text-slate-600 hover:underline text-xs">Edit</a>
+                        <a href="<?= htmlspecialchars(\App\Helpers\Url::to('/posts/' . (int)$p['id']), ENT_QUOTES, 'UTF-8') ?>#social-media-card" class="text-violet-600 hover:underline text-xs" title="সোশ্যাল মিডিয়া ক্যাপশন তৈরি করুন">📣</a>
                     </td>
                 </tr>
                 <?php endforeach; endif; ?>
