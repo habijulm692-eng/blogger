@@ -1652,4 +1652,117 @@ PROMPT;
         }
         return $fallback;
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // SOCIAL MEDIA CAPTION & AI MASTER PROMPT GENERATOR
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Generate social media captions (Facebook, Instagram, Twitter/X, LinkedIn, YouTube)
+     * and a universal AI master prompt from a blog post.
+     *
+     * @return array{success: bool, data: ?array, provider: ?string, model: ?string, error: ?string}
+     */
+    public function generateSocialMedia(array $postData, ?int $postId = null): array
+    {
+        $prompt = $this->buildSocialMediaPrompt($postData);
+        return $this->executeWithFallback(
+            'social_media',
+            $prompt,
+            $postId,
+            fn(string $c) => $this->parseSocialMediaResponse($c)
+        );
+    }
+
+    private function buildSocialMediaPrompt(array $data): string
+    {
+        $title       = $data['title'] ?? '';
+        $topic       = $data['topic'] ?? $title;
+        $meta        = $data['meta_description'] ?? '';
+        $excerpt     = $data['excerpt'] ?? '';
+        $keyword     = $data['primary_keyword'] ?? '';
+        $tags        = is_array($data['tags'] ?? null) ? implode(', ', $data['tags']) : ($data['tags'] ?? '');
+        $lang        = ($data['language'] ?? 'bn') === 'bn' ? 'Bengali (বাংলা)' : 'English';
+        $isBn        = ($data['language'] ?? 'bn') === 'bn';
+
+        // Provide a short content summary (first 800 chars of plain text) to ground the AI
+        $contentSummary = '';
+        if (!empty($data['content_html'])) {
+            $contentSummary = Sanitizer::truncate(strip_tags((string)$data['content_html']), 800);
+        }
+        if ($contentSummary === '' && $excerpt !== '') {
+            $contentSummary = $excerpt;
+        }
+
+        $instructionLang = $isBn
+            ? 'সকল ক্যাপশন বাংলায় (Bengali) লিখুন। Master Prompt ইংরেজিতে লিখুন।'
+            : 'Write all captions in English. Write Master Prompt in English.';
+
+        return <<<PROMPT
+You are an expert social media content strategist and AI prompt engineer.
+
+Based on the following blog post details, generate:
+1. Optimized social media captions for Facebook, Instagram, Twitter/X, LinkedIn, and YouTube.
+2. A universal AI generator Master Prompt that anyone can use to recreate similar content using any AI tool.
+
+Blog Post Details:
+- Title: {$title}
+- Topic: {$topic}
+- Primary Keyword: {$keyword}
+- Tags: {$tags}
+- Meta Description: {$meta}
+- Language: {$lang}
+- Content Summary: {$contentSummary}
+
+Instructions:
+{$instructionLang}
+
+Social Media Caption Requirements:
+- facebook_caption: 150–300 characters. Engaging hook sentence, 1–2 lines of value, 3–5 relevant hashtags. Include a CTA like "পড়ুন →" or "Read more →".
+- instagram_caption: 150–220 characters. Punchy opener + value line + 5–8 hashtags (mix broad and niche). Emoji-friendly but not spammy.
+- twitter_caption: Max 240 characters. Short, punchy, conversational. 2–3 hashtags. CTA optional.
+- linkedin_caption: 200–400 characters. Professional tone. Hook line + 2–3 insight lines + 3–5 hashtags. CTA to read.
+- youtube_description: 200–350 characters. Video description style. What the video/post covers + 5 hashtags at end.
+
+Master Prompt Requirements:
+- Write a detailed, reusable AI prompt (250–400 words) that any user can copy-paste into ChatGPT, Gemini, Claude, or similar tools.
+- The prompt must instruct the AI to generate a high-quality blog post on the same topic/keyword with the same depth, structure, and quality.
+- Include: persona, topic, keyword, target audience, word count guideline (~1000–1500 words), tone, structure (intro, H2/H3 sections, conclusion), SEO rules, and output format.
+- Make it plug-and-play: the user should be able to use it immediately without editing.
+
+Return ONLY valid JSON (no markdown, no explanation):
+{
+  "facebook_caption": "",
+  "instagram_caption": "",
+  "twitter_caption": "",
+  "linkedin_caption": "",
+  "youtube_description": "",
+  "master_prompt": ""
+}
+PROMPT;
+    }
+
+    private function parseSocialMediaResponse(string $content): ?array
+    {
+        $json = $this->extractJson($content);
+        if ($json === null || !is_array($json)) {
+            return null;
+        }
+
+        $required = ['facebook_caption', 'instagram_caption', 'twitter_caption', 'linkedin_caption', 'youtube_description', 'master_prompt'];
+        foreach ($required as $key) {
+            if (!isset($json[$key])) {
+                return null;
+            }
+        }
+
+        return [
+            'facebook_caption'    => trim((string)$json['facebook_caption']),
+            'instagram_caption'   => trim((string)$json['instagram_caption']),
+            'twitter_caption'     => trim((string)$json['twitter_caption']),
+            'linkedin_caption'    => trim((string)$json['linkedin_caption']),
+            'youtube_description' => trim((string)$json['youtube_description']),
+            'master_prompt'       => trim((string)$json['master_prompt']),
+        ];
+    }
 }
