@@ -44,6 +44,7 @@ return [
     ['GET',  '/posts/{id}/images',         'PostController', 'getImages',      ['auth']],
     ['POST', '/posts/{id}/replace-images', 'PostController', 'replaceImages',  ['auth', 'csrf']],
     ['POST', '/posts/{id}/optimize-seo',   'PostController', 'optimizeSeo',    ['auth', 'csrf']],
+    ['POST', '/posts/{id}/social-media',   'PostController', 'socialMedia',    ['auth', 'csrf']],
 
     // Sources
     ['GET',  '/sources',                       'SourceController', 'index',             ['auth']],
