@@ -86,6 +86,16 @@ try {
         ['login_max_attempts', '5', 'integer', 'security'],
         ['login_lockout_minutes', '15', 'integer', 'security'],
         ['log_retention_days', '30', 'integer', 'maintenance'],
+        ['ads_enabled', '0', 'boolean', 'ads'],
+        ['ad_social_bar_code', '', 'string', 'ads'],
+        ['ad_banner_code', '', 'string', 'ads'],
+        ['ad_banner_position', 'smart', 'string', 'ads'],
+        ['ad_direct_link_1', '', 'string', 'ads'],
+        ['ad_direct_link_2', '', 'string', 'ads'],
+        ['ad_smart_link_count', '2', 'integer', 'ads'],
+        ['ad_copy_button_text', '📋 কপি করুন', 'string', 'ads'],
+        ['ad_copy_unlock_text', 'আরেকটা লিঙ্ক দেখলে কপি হবে', 'string', 'ads'],
+        ['ad_prompt_box_enabled', '1', 'boolean', 'ads'],
     ];
 
     foreach ($settings as [$key, $value, $type, $group]) {
