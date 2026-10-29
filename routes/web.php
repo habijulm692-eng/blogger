@@ -45,6 +45,7 @@ return [
     ['POST', '/posts/{id}/replace-images', 'PostController', 'replaceImages',  ['auth', 'csrf']],
     ['POST', '/posts/{id}/optimize-seo',   'PostController', 'optimizeSeo',    ['auth', 'csrf']],
     ['POST', '/posts/{id}/social-media',   'PostController', 'socialMedia',    ['auth', 'csrf']],
+    ['POST', '/posts/{id}/inject-ads',     'PostController', 'injectAds',      ['auth', 'csrf']],
 
     // Sources
     ['GET',  '/sources',                       'SourceController', 'index',             ['auth']],
@@ -80,4 +81,11 @@ return [
     ['POST', '/ai-usage/toggle',   'SettingsController', 'toggleProvider',   ['auth', 'csrf']],
     ['POST', '/ai-usage/reorder',  'SettingsController', 'reorderProviders',  ['auth', 'csrf']],
     ['GET',  '/activity-logs',     'ActivityController', 'index',            ['auth']],
+
+    // Database & SQL Migrations (Upload & Run SQL)
+    ['GET',  '/database',             'DatabaseController', 'index',      ['auth']],
+    ['POST', '/database/migrate',     'DatabaseController', 'migrate',    ['auth', 'csrf']],
+    ['POST', '/database/migrate-one', 'DatabaseController', 'migrateOne', ['auth', 'csrf']],
+    ['POST', '/database/upload',      'DatabaseController', 'upload',     ['auth', 'csrf']],
+    ['POST', '/database/run-query',   'DatabaseController', 'runQuery',   ['auth', 'csrf']],
 ];
